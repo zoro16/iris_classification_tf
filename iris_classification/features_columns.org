@@ -1,0 +1,140 @@
+#+TITLE: TensorFlow - Feature Columns
+#+AUTHOR: Mohamed Saleh A. Abdelgadir
+#+EMAIL: mohamed.saleh16@gmail.com
+#+OPTIONS: H:2 num:nil toc:nil \n:nil @:t ::t |:t ^:{} _:{} *:t TeX:t LaTeX:t
+
+* Numeric_column
+#+BEGIN_SRC python
+# Defaults to a tf.float32 scalar.
+numeric_feature_column = tf.feature_column.numeric_column(key="SepalLength")
+
+# Represent a tf.float64 scalar.
+numeric_feature_column = tf.feature_column.numeric_column(key="SepalLength",
+                                                          dtype=tf.float64)
+# Represent a 10-element vector in which each cell contains a tf.float32.
+vector_feature_column = tf.feature_column.numeric_column(key="Bowling", shape=10)
+
+# Represent a 10x5 matrix in which each cell contains a tf.float32.
+matrix_feature_column = tf.feature_column.numeric_column(key="MyMatrix",
+                                                         shape=[10,5])
+#+END_SRC
+
+* Bucketized_column
+#+BEGIN_SRC python
+# First, convert the raw input to a numeric column.
+numeric_feature_column = tf.feature_column.numeric_column("Year")
+
+# Then, bucketize the numeric column on the years 1960, 1980, and 2000.
+bucketized_feature_column = tf.feature_column.bucketized_column(source_column = numeric_feature_column,
+                                                                boundaries = [1960, 1980, 2000])
+#+END_SRC
+
+* Categorical identity column
+#+BEGIN_SRC python
+# Create categorical output for an integer feature named "my_feature_b",
+# The values of my_feature_b must be >= 0 and < num_buckets
+identity_feature_column = tf.feature_column.categorical_column_with_identity(
+    key='my_feature_b',
+    num_buckets=4) # Values [0, 4)
+
+# In order for the preceding call to work, the input_fn() must return
+# a dictionary containing 'my_feature_b' as a key. Furthermore, the values
+# assigned to 'my_feature_b' must belong to the set [0, 4).
+def input_fn():
+    ...
+    return ({ 'my_feature_a':[7, 9, 5, 2], 'my_feature_b':[3, 1, 2, 2] },
+            [Label_values])
+#+END_SRC
+
+
+* Categorical vocabulary column 
+#+BEGIN_SRC python
+# Given input "feature_name_from_input_fn" which is a string,
+# create a categorical feature by mapping the input to one of
+# the elements in the vocabulary list.
+vocabulary_feature_column =
+    tf.feature_column.categorical_column_with_vocabulary_list(
+        key="a feature returned by input_fn()",
+        vocabulary_list=["kitchenware", "electronics", "sports"])
+
+
+
+# Given input "feature_name_from_input_fn" which is a string,
+# create a categorical feature to our model by mapping the input to one of
+# the elements in the vocabulary file
+vocabulary_feature_column =
+    tf.feature_column.categorical_column_with_vocabulary_file(
+        key="a feature returned by input_fn()",
+        vocabulary_file="product_class.txt",
+        vocabulary_size=3)
+#+END_SRC
+
+
+* Hashed Column
+#+BEGIN_SRC python
+# pseudocode
+feature_id = hash(raw_feature) % hash_buckets_size
+
+hash_feature_column = 
+tf.feature_column.categorical_column_with_hash_bucket(key="some_feature",
+                                                      hash_buckets_size=100)
+#+END_SRC
+
+
+* Crossed column
+#+BEGIN_SRC python
+def make_dataset(latitude, longitude, labels):
+    assert latitude.shape == longitude.shape == labels.shape
+
+    features = {'latitude': latitude.flatten(),
+                'longitude': longitude.flatten()}
+    labels = labels.flatten()
+
+    return tf.data.Dataset.from_tensor_slices((features, labels))
+
+# Bucketize the latitude and longitude usig the `edges`
+latitude_bucket_fc = tf.feature_column.bucketized_column(
+    tf.feature_column.numeric_column('latitude'),
+    list(atlanta.latitude.edges)
+)
+
+longitude_bucket_fc = tf.feature_column.bucketized_column(
+    tf.feature_column.numeric_column('longitude'),
+    list(atlanta.longitude.edges)
+)
+
+# Cross the bucketized columns, using 5000 hash bins.
+crossed_lat_lon_fc = tf.feature_column.crossed_column(
+    [latitude_bucket_fc, longitude_bucket_fc],
+    5000  #  hash bins
+)
+
+fc = [latitude_bucket_fc,
+      longitude_bucket_fc,
+      crossed_lat_lon_fc]
+
+# Build and train the Estimator.
+est = tf.estimator.LinearRegressor(fc, ...)
+
+#+END_SRC
+
+* Indicator and embedding columns
+  - As an indicator column. A function converts each numeric categorical value into an 81-element vector (because our palette consists of 81 words), placing a 1 in the index of the categorical value (0, 32, 79, 80) and a 0 in all the other positions.
+  - As an embedding column. A function uses the numerical categorical values (0, 32, 79, 80) as indices to a lookup table. Each slot in that lookup table contains a 3-element vector.
+  - How do the values in the embeddings vectors magically get assigned? Actually, the assignments happen during training. That is, the model learns the best way to map your input numeric categorical values to the embeddings vector value in order to solve your problem. Embedding columns increase your model's capabilities, since an embeddings vector learns new relationships between categories from the training data.
+  - Why is the embedding vector size 3 in our example? Well, the following "formula" provides a general rule of thumb about the number of embedding dimensions:
+    #+BEGIN_SRC python
+       embedding_dimensions =  number_of_categories**0.25
+       3 =  81**0.25
+    #+END_SRC
+
+ #+BEGIN_SRC python
+ categorical_column = ... # Create any categorical column
+
+# Represent the categorical column as an embedding column.
+# This means creating a one-hot vector with one element for each category.
+embedding_column = tf.feature_column.embedding_column(
+    categorical_column=categorical_column,
+    dimension=dimension_of_embedding_vector)
+
+ #+END_SRC

@@ -27,7 +27,7 @@ def main(argv):
     # Build 2 hidden layer DNN with 10, 10 units respectively.
     classifier = tf.estimator.DNNClassifier(
         feature_columns=my_feature_columns,
-        hidden_units=[20, 20, 10], # Two hidden layers of 10 nodes each.
+        hidden_units=[20, 20], # Two hidden layers of 10 nodes each.
         n_classes=3 # The model must choose between 3 classes.
     )
 
@@ -41,8 +41,14 @@ def main(argv):
 
     # Evaluate the model.
     eval_result = classifier.evaluate(
-        input_fn = lambda:iris_data.eval_input_fn(test_x, test_y, args.batch_size)
+        input_fn = lambda:iris_data.eval_input_fn(test_x,
+                                                  test_y,
+                                                  args.batch_size)
     )
+
+    print("==============================================")
+    print(eval_result)
+    print("==============================================")
 
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
 
@@ -56,16 +62,25 @@ def main(argv):
     }
 
     predictions = classifier.predict(
-        input_fn = lambda:iris_data.eval_input_fn(predict_x, labels=None, batch_size=args.batch_size)
+        input_fn = lambda:iris_data.eval_input_fn(predict_x,
+                                                  labels=None,
+                                                  batch_size=args.batch_size)
     )
 
     template = ('\nPrediction is "{}" ({:.1f}%), expected "{}"')
+
+    print("==============================================")
+    print(zip(predictions, expected))
+    print("==============================================")
 
     for pred_dict, expec in zip(predictions, expected):
         class_id = pred_dict['class_ids'][0]
         probability = pred_dict['probabilities'][class_id]
 
         print(template.format(iris_data.SPECIES[class_id], 100 * probability, expec))
+        print("==============================================")
+        print(expec)
+        print("==============================================")
 
 
 if __name__ == '__main__':
