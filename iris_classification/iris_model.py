@@ -23,14 +23,30 @@ def main(argv):
 
     classifier = tf.estimator.DNNClassifier(
         feature_columns=feature_columns_list,
-        hidden_units=[20, 20],
-        n_classes=3
+        hidden_units=[20, 20, 20],
+        n_classes=3,
+        model_dir='models/iris'
     )
+    #####################################
+    #  TO ALTER THE DEFAULT SCHADULE    #
+    #####################################
+    # my_checkpointing_config = tf.estimator.RunConfig(
+    #     save_checkpoints_secs = 20*60,  # Save checkpoints every 20 minutes.
+    #     keep_checkpoint_max = 10,       # Retain the 10 most recent checkpoints.
+    # )
+    # classifier = tf.estimator.DNNClassifier(
+    #     feature_columns=my_feature_columns,
+    #     hidden_units=[10, 10],
+    #     n_classes=3,
+    #     model_dir='models/iris',
+    #     config=my_checkpointing_config
+    # )
+    train_file_path = "iris_training.csv"
+    test_file_path = "iris_test.csv"
 
     classifier.train(
-        input_fn=lambda:iris_utils.train_input_fn(train_x,
-                                                  train_y,
-                                                  args.batch_size),
+        input_fn=lambda:iris_utils.csv_input_fn(train_file_path,
+                                                args.batch_size),
         steps=args.train_steps
     )
     

@@ -48,8 +48,8 @@ def eval_input_fn(features, labels, batch_size):
 CSV_TYPES = [[0.0], [0.0], [0.0], [0.0], [0]]
 
 def _parse_line(line):
-    fields = tf.Decode_csv(line, record_defaults=CSV_TYPES)
-    features = dist(zip(CSV_COLUMN_NAMES, fields))
+    fields = tf.decode_csv(line, record_defaults=CSV_TYPES)
+    features = dict(zip(CSV_COLUMN_NAMES, fields))
     labels = features.pop('Species')
 
     return features, labels
@@ -57,6 +57,6 @@ def _parse_line(line):
 def csv_input_fn(csv_path, batch_size):
     dataset = tf.data.TextLineDataset(csv_path).skip(1)
     dataset = dataset.map(_parse_line)
-    dataset = dataset.Shuffle(1000).repeat().batch(batch_size)
+    dataset = dataset.shuffle(1000).repeat().batch(batch_size)
 
     return dataset
