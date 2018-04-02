@@ -106,7 +106,7 @@ def main(argv):
         template = ('\nPrediction is "{}" ({:.1f}%), expected "{}"')
 
         class_id = pred_dict['class_ids'][0]
-        probability = pred_dict['probabilities'][class_id]
+        probability = pred_dict['probablities'][class_id]
 
         print(template.format(iris_data.SPECIES[class_id],
                               100 * probability, expec))

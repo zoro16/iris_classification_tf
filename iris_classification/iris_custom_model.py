@@ -8,8 +8,8 @@ import tensorflow as tf
 import iris_data
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batch_size', defualt=100, type=int, help='batch size')
-parser.add_argument('--train_steps', defualt=1000, type=int, help='number of training steps')
+parser.add_argument('--batch_size', default=100, type=int, help='batch size')
+parser.add_argument('--train_steps', default=1000, type=int, help='number of training steps')
 
 def my_model(features, labels, mode, params):
     # INPUT LAYER
@@ -22,9 +22,46 @@ def my_model(features, labels, mode, params):
     # OUTPUT LAYER
     logits = tf.layers.dense(net, params['n_classes'], activation=None)
 
+    predicted_classes = tf.argmax(logits, 1)
+    print("===========================================================")
+    print("Predicted Classes using argmax {}:".format(predicted_classes[:, tf.newaxis]))
+    print("===========================================================")
+
+    if mode == tf.estimator.ModeKeys.PREDICT:
+        predictions = {
+            'class_ids': predicted_classes[:, tf.newaxis],
+            'probablities': tf.nn.softmax(logits),
+            'logits': logits,
+        }
+        return tf.estimator.EstimatorSpec(mode, predictions=predictions)
+
+    loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
+
+    accuracy = tf.metrics.accuracy(labels=labels,
+                                   predictions=predicted_classes,
+                                   name='acc_op')
+    metrics = {'accuracy': accuracy}
+    tf.summary.scalar('accuracy', accuracy[1])
+
+    if mode == tf.estimator.ModeKeys.EVAL:
+        return tf.estimator.EstimatorSpec(mode,
+                                          loss=loss,
+                                          eval_metric_ops=metrics
+        )
+
+    assert mode == tf.estimator.ModeKeys.TRAIN
+
+    optimizer = tf.train.AdagradOptimizer(learning_rate=0.1)
+    train_op = optimizer.minimize(loss, global_step=tf.train.get_global_step())
+
+    return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op)
+
+    
+
+
 
 def main(argv):
-    args = parser.parse_args([1:])
+    args = parser.parse_args(argv[1:])
 
     (train_x, train_y), (test_x, test_y) = iris_data.load_data()
 
@@ -46,11 +83,11 @@ def main(argv):
         steps=args.train_steps
     )
 
-    eval_results = classifier.evaluate(
+    eval_result = classifier.evaluate(
         input_fn=lambda:iris_data.eval_input_fn(test_x, test_y, args.batch_size)
     )
 
-    print('\nTest set accuracy: {accuracy:0.3f}\n'.format(*eval_result))
+    print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
 
     expected = ['Setosa', 'Versicolor', 'Virginica']
     predict_x = {
@@ -60,7 +97,7 @@ def main(argv):
         'PetalWidth': [0.5, 1.5, 2.1],
     }
 
-    predications = classifier.predit(
+    predications = classifier.predict(
         input_fn=lambda:iris_data.eval_input_fn(predict_x,
                                                 labels=None,
                                                 batch_size=args.batch_size)
@@ -70,8 +107,8 @@ def main(argv):
         template = ('\nPrediction is "{}" ({:.1f}%), expected "{}"')
 
         class_id = pred_dict['class_ids'][0]
-        probability = pred_dict['probabilities'][class_id]
-
+        probability = pred_dict['probablities'][class_id]
+                                 
         print(template.format(iris_data.SPECIES[class_id], 100*probability, expec))
 
 
